@@ -100,8 +100,7 @@ function ssh-clip() {
 
     echo "while nc -l \"${local_port}\" | xclip -i -sel p -f | xclip -i -sel c ; do sleep 0; done &" | _ssh_clip_log
     while nc -l "${local_port}" | xclip -i -sel p -f | xclip -i -sel c ; do sleep 0; done &
-    nc_pid="${!}"
-    echo "PID: '${nc_pid}'" | _ssh_clip_log
+    echo "job id: $(jobs -l | grep "while nc -l \"${local_port}\"" | grep -Po '^\[[0-9]+\]')" | _ssh_clip_log
 
     if [ -z "${user}" ]; then
         hostname_connection_string="${hostname}"
@@ -111,7 +110,7 @@ function ssh-clip() {
 
     IFS='' read -r -d '' remote_setup <<EOF
 mkdir -p ~/.local/bin/
-if ! echo \$PATH | grep -Pq \"(\$HOME/.local/bin:|:\$HOME/.local/bin)\"; then
+if ! echo \$PATH | grep -Pq "(\$HOME/.local/bin:|:\$HOME/.local/bin)"; then
     export PATH="${PATH}:~/.local/bin/"
 fi
 cat > ~/.local/bin/ssh-kopy <<EFF
@@ -132,8 +131,7 @@ EOF
     echo "ssh -t \"${hostname_connection_string}\" \"rm ~/.local/bin/ssh-kopy\"" | _ssh_clip_log
     ssh -t "${hostname_connection_string}" "rm ~/.local/bin/ssh-kopy"
 
-    kill -9 "${nc_pid}"
-    netstat -tulpen 2> /dev/null | grep 0.0.0.0:"${local_port}" | grep -Po '[0-9]+/nc' | grep -Po '[0-9]+' | xargs -I {} kill -9 "{}"
+    kill %$(jobs -l | grep "while nc -l \"${local_port}\"" | grep -Po '^\[[0-9]+\]' | grep -Po '[0-9]+')
     return 0
 }
 
